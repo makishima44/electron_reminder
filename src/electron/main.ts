@@ -1,5 +1,8 @@
-import { app, BrowserWindow } from "electron";
+import { app, BrowserWindow, ipcMain } from "electron";
 import path from "path";
+import Store from "electron-store";
+
+const store = new Store();
 
 const createWindow = () => {
   const win = new BrowserWindow({
@@ -13,13 +16,24 @@ const createWindow = () => {
   win.loadURL("http://localhost:5173");
 };
 
-app.whenReady().then(() => {
-  createWindow();
-  app.on("activate", () => {
-    if (BrowserWindow.getAllWindows().length === 0) createWindow();
-  });
+// Когда Electron готов — создаём окно
+app.whenReady().then(createWindow);
+
+// IPC: Получение всех напоминаний
+ipcMain.handle("get-reminders", () => {
+  return store.get("reminders", []) as string[];
 });
 
-app.on("window-all-closed", () => {
-  if (process.platform !== "darwin") app.quit();
+// IPC: Добавление напоминания
+ipcMain.handle("add-reminder", (_event, text: string) => {
+  const reminders = store.get("reminders", []) as string[];
+  reminders.push(text);
+  store.set("reminders", reminders);
+});
+
+// IPC: Удаление напоминания
+ipcMain.handle("delete-reminder", (_event, index: number) => {
+  const reminders = store.get("reminders", []) as string[];
+  reminders.splice(index, 1);
+  store.set("reminders", reminders);
 });
