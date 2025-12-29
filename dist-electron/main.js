@@ -1,29 +1,44 @@
-"use strict";
-var __importDefault = (this && this.__importDefault) || function (mod) {
-    return (mod && mod.__esModule) ? mod : { "default": mod };
-};
-Object.defineProperty(exports, "__esModule", { value: true });
-const electron_1 = require("electron");
-const path_1 = __importDefault(require("path"));
+import { app, BrowserWindow, ipcMain } from "electron";
+import path from "path";
+import Store from "electron-store";
+// 2. Создаём хранилище с типизацией
+const store = new Store();
+// 3. Эмулируем __dirname (обязательно при использовании import в ES-модулях)
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+// 4. Создаём окно
 const createWindow = () => {
-    const win = new electron_1.BrowserWindow({
+    const win = new BrowserWindow({
         width: 800,
         height: 600,
         webPreferences: {
-            preload: path_1.default.join(__dirname, "preload.js"),
+            preload: path.join(__dirname, "preload.js"),
+            contextIsolation: true, // важно для безопасности
         },
     });
     win.loadURL("http://localhost:5173");
+    // win.webContents.openDevTools(); // раскомментируй для отладки
 };
-electron_1.app.whenReady().then(() => {
-    createWindow();
-    electron_1.app.on("activate", () => {
-        if (electron_1.BrowserWindow.getAllWindows().length === 0)
-            createWindow();
-    });
-});
-electron_1.app.on("window-all-closed", () => {
+// 5. Запуск приложения
+app.whenReady().then(createWindow);
+app.on("window-all-closed", () => {
     if (process.platform !== "darwin")
-        electron_1.app.quit();
+        app.quit();
+});
+// 6. IPC-обработчики
+ipcMain.handle("get-reminders", () => {
+    return store.get("reminders", []);
+});
+ipcMain.handle("add-reminder", (_event, text) => {
+    const reminders = store.get("reminders", []);
+    reminders.push(text);
+    store.set("reminders", reminders);
+});
+ipcMain.handle("delete-reminder", (_event, index) => {
+    const reminders = store.get("reminders", []);
+    reminders.splice(index, 1);
+    store.set("reminders", reminders);
 });
 //# sourceMappingURL=main.js.map

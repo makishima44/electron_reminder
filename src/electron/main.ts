@@ -2,38 +2,55 @@ import { app, BrowserWindow, ipcMain } from "electron";
 import path from "path";
 import Store from "electron-store";
 
-const store = new Store();
+// 1. Определяем структуру данных, которые будем хранить
+interface StoreSchema {
+  reminders?: string[];
+}
 
+// 2. Создаём хранилище с типизацией
+const store = new Store<StoreSchema>();
+
+// 3. Эмулируем __dirname (обязательно при использовании import в ES-модулях)
+import { fileURLToPath } from "url";
+import { dirname } from "path";
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
+// 4. Создаём окно
 const createWindow = () => {
   const win = new BrowserWindow({
     width: 800,
     height: 600,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
+      contextIsolation: true, // важно для безопасности
     },
   });
 
   win.loadURL("http://localhost:5173");
+  // win.webContents.openDevTools(); // раскомментируй для отладки
 };
 
-// Когда Electron готов — создаём окно
+// 5. Запуск приложения
 app.whenReady().then(createWindow);
 
-// IPC: Получение всех напоминаний
-ipcMain.handle("get-reminders", () => {
-  return store.get("reminders", []) as string[];
+app.on("window-all-closed", () => {
+  if (process.platform !== "darwin") app.quit();
 });
 
-// IPC: Добавление напоминания
+// 6. IPC-обработчики
+ipcMain.handle("get-reminders", () => {
+  return store.get("reminders", []);
+});
+
 ipcMain.handle("add-reminder", (_event, text: string) => {
-  const reminders = store.get("reminders", []) as string[];
+  const reminders = store.get("reminders", []);
   reminders.push(text);
   store.set("reminders", reminders);
 });
 
-// IPC: Удаление напоминания
 ipcMain.handle("delete-reminder", (_event, index: number) => {
-  const reminders = store.get("reminders", []) as string[];
+  const reminders = store.get("reminders", []);
   reminders.splice(index, 1);
   store.set("reminders", reminders);
 });
