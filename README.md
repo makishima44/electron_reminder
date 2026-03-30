@@ -1,24 +1,2 @@
-# Electron Reminder
-
-Windows desktop-приложение с напоминаниями.
-
-Функции:
-- задаете текст и время (в минутах);
-- по истечении времени появляется полноэкранное окно поверх всех окон;
-- окно закрывается только после нажатия `OK`.
-
-## Запуск в режиме разработки
-
-```bash
-npm install
-npm run start
-```
-
-## Сборка Windows установщика (.exe)
-
-```bash
-npm install
-npm run dist:win
-```
-
-Готовый установщик будет в папке `release`.
+⏰ Electron Break Reminder App
+A simple desktop reminder application built with Electron and React, designed to help you take timely breaks during work or study. Choose your custom reminder text, set the delay, and get a fullscreen blocking window that demands your attention — whether it’s time to stand up, stretch, drink water, or rest your eyes. Practical, minimal, and focused on helping you build healthier computer habits.
