@@ -1,2 +1,35 @@
-# ⏰ Electron Break Reminder App
-A simple desktop reminder application built with Electron and React, designed to help you take timely breaks during work or study. Choose your custom reminder text, set the delay, and get a fullscreen blocking window that demands your attention — whether it’s time to stand up, stretch, drink water, or rest your eyes. Practical, minimal, and focused on helping you build healthier computer habits.
+# Reminder
+
+Напоминания для Windows: задайте текст, дату и время — приложение покажет полноэкранное окно в нужный момент.
+
+Возможности:
+- разовые и повторяющиеся напоминания: ежедневно, по будням, каждую неделю или месяц;
+- настройка цвета полноэкранного окна и предпросмотр;
+- сохранение напоминаний и настроек на этом компьютере;
+- очередь напоминаний, если несколько срабатывают одновременно.
+
+## Запуск на компьютере
+
+Установите Node.js 20 или новее, откройте папку проекта в терминале и выполните:
+
+```bash
+npm install
+npm run start
+```
+
+Команда запускает Vite и Electron. Для остановки закройте приложение и нажмите `Ctrl+C` в терминале.
+
+## Сборка установщика Windows
+
+```bash
+npm run dist:win
+```
+
+Установщик `.exe` появится в папке `release`.
+
+## Структура
+
+- `src/renderer/` — экраны, компоненты, хуки и стили интерфейса;
+- `src/electron/` — окна приложения, IPC и планирование напоминаний;
+- `src/shared/` — общие типы и календарные правила;
+- `dist/`, `dist-electron/`, `release/` — локальные результаты сборки, исключены из Git.
