@@ -1,12 +1,12 @@
 {
   "name": "electron-reminder",
-  "main": "dist-electron/main.js",
+  "main": "dist-electron/electron/main.js",
   "type": "module",
   "private": true,
   "version": "0.0.0",
   "scripts": {
     "dev": "vite --host",
-    "electron": "npm run build:electron && electron ./dist-electron/main.js",
+    "electron": "npm run build:electron && electron ./dist-electron/electron/main.js",
     "start": "concurrently \"npm run dev\" \"wait-on http://localhost:5173 && npm run electron\"",
     "build:renderer": "vite build",
     "build:electron": "tsc --project tsconfig.electron.json",

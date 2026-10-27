@@ -1,55 +1,41 @@
 import { app, BrowserWindow, ipcMain } from "electron";
-import { randomUUID } from "node:crypto";
-import path from "path";
-import { fileURLToPath } from "url";
-import { dirname } from "path";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
+import type { Reminder } from "../shared/types.js";
+import { registerReminderIpc } from "./ipc.js";
+import { ReminderService } from "./reminder-service.js";
 
-interface Reminder {
-  id: string;
-  text: string;
-  delayMinutes: number;
-  triggerAt: number;
-}
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-const reminders: Reminder[] = [];
-const timers = new Map<string, NodeJS.Timeout>();
-const dueQueue: Reminder[] = [];
-const rendererDistPath = path.join(app.getAppPath(), "dist");
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const isDev = !app.isPackaged;
+const rendererPath = path.join(app.getAppPath(), "dist");
+const pendingReminders: Reminder[] = [];
 
 let mainWindow: BrowserWindow | null = null;
 let reminderWindow: BrowserWindow | null = null;
 let activeReminderId: string | null = null;
-
-const isDev = !app.isPackaged;
-
-const getMainUrl = () => {
-  if (isDev) {
-    return "http://localhost:5173";
-  }
-
-  return `file://${path.join(rendererDistPath, "index.html")}`;
-};
+let reminderService: ReminderService;
 
 const createMainWindow = () => {
   mainWindow = new BrowserWindow({
-    width: 800,
-    height: 640,
-    minWidth: 600,
-    minHeight: 520,
-    title: "Reminder",
+    width: 1100,
+    height: 790,
+    minWidth: 760,
+    minHeight: 680,
+    autoHideMenuBar: true,
+    title: "Reminder — напоминает о важном",
+    backgroundColor: "#f6f5f1",
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
+      nodeIntegration: false,
     },
   });
+  mainWindow.setMenuBarVisibility(false);
 
   if (isDev) {
-    mainWindow.loadURL(getMainUrl());
+    void mainWindow.loadURL("http://localhost:5173");
   } else {
-    mainWindow.loadFile(path.join(rendererDistPath, "index.html"));
+    void mainWindow.loadFile(path.join(rendererPath, "index.html"));
   }
 
   mainWindow.on("closed", () => {
@@ -57,13 +43,14 @@ const createMainWindow = () => {
   });
 };
 
-const openBlockingReminderWindow = (reminder: Reminder) => {
+const openReminderWindow = (reminder: Reminder) => {
   if (reminderWindow) {
+    pendingReminders.push(reminder);
     return;
   }
 
   activeReminderId = reminder.id;
-
+  const settings = reminderService.getSettings();
   reminderWindow = new BrowserWindow({
     frame: false,
     fullscreen: true,
@@ -75,20 +62,31 @@ const openBlockingReminderWindow = (reminder: Reminder) => {
     maximizable: false,
     closable: false,
     focusable: true,
+    backgroundColor: settings.alertBackground,
     webPreferences: {
       preload: path.join(__dirname, "preload.cjs"),
       contextIsolation: true,
+      nodeIntegration: false,
     },
   });
 
   reminderWindow.setAlwaysOnTop(true, "screen-saver");
   reminderWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
+  reminderWindow.setMenuBarVisibility(false);
 
-  const url = isDev
-    ? `http://localhost:5173/reminder.html?text=${encodeURIComponent(reminder.text)}&id=${encodeURIComponent(reminder.id)}`
-    : `file://${path.join(rendererDistPath, "reminder.html")}?text=${encodeURIComponent(reminder.text)}&id=${encodeURIComponent(reminder.id)}`;
+  const query = new URLSearchParams({
+    id: reminder.id,
+    text: reminder.text,
+    background: settings.alertBackground,
+  }).toString();
 
-  reminderWindow.loadURL(url);
+  if (isDev) {
+    void reminderWindow.loadURL("http://localhost:5173/reminder.html?" + query);
+  } else {
+    void reminderWindow.loadFile(path.join(rendererPath, "reminder.html"), {
+      query: { id: reminder.id, text: reminder.text, background: settings.alertBackground },
+    });
+  }
 
   reminderWindow.on("blur", () => {
     reminderWindow?.focus();
@@ -97,40 +95,28 @@ const openBlockingReminderWindow = (reminder: Reminder) => {
   reminderWindow.on("closed", () => {
     reminderWindow = null;
     activeReminderId = null;
-    showNextReminder();
+    const next = pendingReminders.shift();
+    if (next) {
+      openReminderWindow(next);
+    }
   });
 };
 
-const showNextReminder = () => {
-  if (reminderWindow || dueQueue.length === 0) {
-    return;
-  }
-
-  const next = dueQueue.shift();
-  if (!next) {
-    return;
-  }
-
-  openBlockingReminderWindow(next);
-};
-
-const scheduleReminder = (reminder: Reminder) => {
-  const delayMs = Math.max(1000, reminder.triggerAt - Date.now());
-  const timer = setTimeout(() => {
-    timers.delete(reminder.id);
-    const index = reminders.findIndex((item) => item.id === reminder.id);
-    if (index !== -1) {
-      const [expired] = reminders.splice(index, 1);
-      dueQueue.push(expired);
-      showNextReminder();
-    }
-  }, delayMs);
-
-  timers.set(reminder.id, timer);
-};
-
 app.whenReady().then(() => {
+  app.setAppUserModelId("com.local.electron-reminder");
+  reminderService = new ReminderService();
+  registerReminderIpc(reminderService);
+
+  ipcMain.handle("acknowledge-reminder", (_event, id: string) => {
+    if (id !== activeReminderId || !reminderWindow) {
+      return false;
+    }
+    reminderWindow.destroy();
+    return true;
+  });
+
   createMainWindow();
+  reminderService.start(openReminderWindow);
 
   app.on("activate", () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -143,73 +129,4 @@ app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
   }
-});
-
-ipcMain.handle("get-reminders", () => {
-  return reminders
-    .slice()
-    .sort((a, b) => a.triggerAt - b.triggerAt)
-    .map((item) => ({
-      id: item.id,
-      text: item.text,
-      delayMinutes: item.delayMinutes,
-      triggerAt: item.triggerAt,
-    }));
-});
-
-ipcMain.handle(
-  "create-reminder",
-  (_event, payload: { text: string; delayMinutes: number }) => {
-    const text = payload?.text?.trim();
-    const delayMinutes = Number(payload?.delayMinutes);
-
-    if (!text) {
-      throw new Error("Reminder text is required");
-    }
-
-    if (!Number.isFinite(delayMinutes) || delayMinutes <= 0) {
-      throw new Error("Delay must be greater than zero");
-    }
-
-    const reminder: Reminder = {
-      id: randomUUID(),
-      text,
-      delayMinutes,
-      triggerAt: Date.now() + delayMinutes * 60_000,
-    };
-
-    reminders.push(reminder);
-    scheduleReminder(reminder);
-
-    return reminder;
-  },
-);
-
-ipcMain.handle("delete-reminder", (_event, id: string) => {
-  const index = reminders.findIndex((item) => item.id === id);
-  if (index === -1) {
-    return false;
-  }
-
-  const [removed] = reminders.splice(index, 1);
-  const timer = timers.get(removed.id);
-  if (timer) {
-    clearTimeout(timer);
-    timers.delete(removed.id);
-  }
-
-  return true;
-});
-
-ipcMain.handle("acknowledge-reminder", (_event, id: string) => {
-  if (activeReminderId !== id) {
-    return false;
-  }
-
-  activeReminderId = null;
-  reminderWindow?.destroy();
-  reminderWindow = null;
-  showNextReminder();
-
-  return true;
 });

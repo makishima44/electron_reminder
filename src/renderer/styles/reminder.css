@@ -1,0 +1,124 @@
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  width: 100%;
+  min-width: 320px;
+  min-height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family: "Segoe UI", "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+button {
+  font: inherit;
+}
+
+.alert-screen {
+  display: grid;
+  width: 100%;
+  min-height: 100vh;
+  min-height: 100dvh;
+  grid-template-rows: 1fr auto;
+  justify-items: center;
+  padding: 8vh 32px 28px;
+  text-align: center;
+  transition: background-color 160ms ease;
+}
+
+.alert-content {
+  align-self: center;
+  width: min(900px, 100%);
+  padding: 24px;
+}
+
+.alert-eyebrow {
+  margin: 0 0 clamp(32px, 8vh, 78px);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.13em;
+  opacity: 0.68;
+  text-transform: uppercase;
+}
+
+.alert-content h1 {
+  margin: 0 0 28px;
+  font-size: clamp(22px, 3vw, 34px);
+  font-weight: 550;
+  letter-spacing: -0.045em;
+  line-height: 1.15;
+}
+
+.alert-message {
+  max-width: 850px;
+  margin: 0 auto clamp(38px, 7vh, 70px);
+  font-size: clamp(38px, 7.4vw, 88px);
+  font-weight: 650;
+  letter-spacing: -0.06em;
+  line-height: 1.08;
+  overflow-wrap: anywhere;
+}
+
+.alert-acknowledge {
+  min-width: 220px;
+  min-height: 64px;
+  border: 0;
+  border-radius: 13px;
+  padding: 0 42px;
+  box-shadow: 0 10px 30px rgb(36 51 43 / 16%);
+  font-size: 19px;
+  font-weight: 650;
+  transition: transform 130ms ease, box-shadow 130ms ease;
+}
+
+.alert-acknowledge:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 13px 34px rgb(36 51 43 / 22%);
+}
+
+.alert-acknowledge:focus-visible {
+  outline: 3px solid currentColor;
+  outline-offset: 5px;
+}
+
+.alert-acknowledge:disabled {
+  cursor: wait;
+  opacity: 0.8;
+}
+
+.alert-footnote {
+  align-self: end;
+  margin: 0;
+  font-size: 12px;
+  opacity: 0.62;
+}
+
+@media (max-width: 600px) {
+  .alert-screen {
+    padding: 7vh 16px 22px;
+  }
+
+  .alert-content {
+    padding: 16px 6px;
+  }
+
+  .alert-acknowledge {
+    min-width: 190px;
+    min-height: 58px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+  }
+}
