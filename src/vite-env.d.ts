@@ -2,6 +2,10 @@
 
 import type { ReminderAPI } from "./shared/types";
 
-interface Window {
-  reminderAPI: ReminderAPI;
+declare global {
+  interface Window {
+    reminderAPI: ReminderAPI;
+  }
 }
+
+export {};

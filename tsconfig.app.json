@@ -23,5 +23,5 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src", "tsconfig.electron.json"]
+  "include": ["src/renderer/**/*", "src/shared/**/*", "src/vite-env.d.ts"]
 }
